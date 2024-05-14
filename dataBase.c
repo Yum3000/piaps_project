@@ -197,11 +197,9 @@ char *checkOrder(sqlite3 *db, int orderId){
     return status;
 }
 
-int checkClientId(sqlite3 *db, char *firstName, char *lastName){
+int checkClientId(sqlite3 *db, char *mobileNumber){
     sqlite3_stmt *res;
     
-    printf("From DB Your name is: %s %s\n", firstName, lastName);
-
     char *sql = "SELECT id FROM clients WHERE firstName = ? AND lastName = ?";
      
     int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
@@ -209,8 +207,8 @@ int checkClientId(sqlite3 *db, char *firstName, char *lastName){
     printf("rc: %d\n", rc);
 
     if (rc == SQLITE_OK) {
-      sqlite3_bind_text(res, 1, firstName, -1, SQLITE_STATIC);
-      sqlite3_bind_text(res, 2, lastName, -1, SQLITE_STATIC);
+      //sqlite3_bind_text(res, 1, firstName, -1, SQLITE_STATIC);
+      //sqlite3_bind_text(res, 2, lastName, -1, SQLITE_STATIC);
     }
     
     int step = sqlite3_step(res);
@@ -228,6 +226,50 @@ int checkClientId(sqlite3 *db, char *firstName, char *lastName){
 
     sqlite3_finalize(res);
     return idClient;
+}
+
+int checkTimeCreatedOrder(sqlite3 *db, int orderId) {
+  
+  sqlite3_stmt *res;
+  char *sql = "SELECT ROUND((JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(created)) * 24) FROM orders where id = ?";
+  
+  int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_int(res, 1, orderId);
+  }
+    
+    int step = sqlite3_step(res);
+    
+    int timeDifference = -1;
+
+    if (step == SQLITE_ROW) {
+        timeDifference = sqlite3_column_int(res, 0);
+        printf("Difference between NOW and your order's created time: %d\n", timeDifference);
+    } else {
+      printf("There is no such order in system\n");
+    }
+
+    sqlite3_finalize(res);
+    return timeDifference;
+}
+
+void deleteOrder(sqlite3 *db, int orderId){
+  sqlite3_stmt *res;
+  char *sql = "DELETE FROM orders WHERE id = ?";
+  int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+
+  if (rc == SQLITE_OK) {
+      sqlite3_bind_int(res, 1, orderId);
+
+      if (sqlite3_step(res) == SQLITE_DONE) {
+          printf("order is canceled!\n");
+      } 
+  } else {
+      fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+  }
+
+    sqlite3_finalize(res);
 }
 
 void addNewClient(sqlite3 *db, char *firstLastName, char *clientContacts){

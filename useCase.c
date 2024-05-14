@@ -2,19 +2,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sqlite3.h> 
 #include "entities.h"
+#include "UI.c"
 
-void clear();
-char *askString(char *string);
-int askNumber(char *string);
-int askVariant(char **array, int countElements);
-void askAnyKey();
-
-void checkClient(sqlite3 *db, char *firstName, char *lastName){
+void checkClient(sqlite3 *db, char *customerNumber){
   printf("%s\n", "CHECK CLIENT");
   int answer;
   char *arrayAnswers[2] = {"yes", "no"};
-  int currId = checkClientId(db, firstName, lastName);
+  int currId = checkClientId(db, customerNumber);
   printf("!!! %d\n", currId);
   if (currId == -1) {
     printf("%s\n", "Sorry, we didn't find you in atelier system");
@@ -35,15 +31,16 @@ void checkClient(sqlite3 *db, char *firstName, char *lastName){
 
 void createNewOrder(sqlite3 *db)
 {
-  //char *customerName = malloc(50);
-  printf("To make a new order enter your first ans last name: \n");
-  char customerFirstName[50];
-  char customerLastName[50];
-  scanf("%49s %49s", customerFirstName, customerLastName);	
+  printf("To make a new order enter your mobile number: \n");
+  char *customerNumber = malloc(50);
 
-  //scanf("%49s", customerName);
-  printf("Your full name in createNewOrder: %s    %s\n", customerFirstName, customerLastName);
-  checkClient(db, customerFirstName, customerLastName);
+  scanf("%49s %49s", customerNumber);	
+
+  char *newNum = formatNumber(customerNumber);
+
+  printf("YOUR NUMBER: %s\n", newNum);
+
+  //checkClient(db, customerNumber);
   int numOfFreeTailor = getFreeTailor(db);
   
 
@@ -68,8 +65,10 @@ void createNewOrder(sqlite3 *db)
 		//return;
 	//}
 
-  char *answer, *clothes, *comms, *currTime, *maxDate;
-  int *costOrder;
+  char *clothes;
+  char *comms;
+  char *maxDate;
+  int costOrder;
   int idService;
   char *arrayTypeOrder[2] = {"sewing", "repair"};
   sleep(1);
@@ -81,10 +80,9 @@ void createNewOrder(sqlite3 *db)
 
   clothes = askString("type what clothes it is:");
   comms = askString("type some comments:");
-  //currTime = askString("type current time:");
   maxDate = askString("type date of max storing the order:");
   costOrder = askNumber("type the cost of the order:");
-  //printf("%d\n", costOrder);
+  printf("%d %s\n", costOrder, maxDate);
 
   int idClient = 1;
 
@@ -98,19 +96,48 @@ void createNewOrder(sqlite3 *db)
 	//return;
 }
 
-void checkOrderStatus(sqlite3 *db, int orderId){
+void checkTime(sqlite3 *db, int orderId) {
+  printf("%s\n", "CHECK TIME");
+  checkTimeCreatedOrder(db, orderId);
+}
 
+void getOrderById(sqlite3 *db, int orderId){
+  printf("%s\n", "GET ORDER");
+  getOrder(db, orderId);
+}
+
+void cancelOrder(sqlite3 *db, int orderId){
+  printf("%s\n", "CANCLE ORDER");
+
+  int passedTimeFromCreating = checkTimeCreatedOrder(db, orderId);
+
+  if (passedTimeFromCreating > 1) {
+    printf("You can't cancel the order, it's turned more than 1 hour\n");
+  } else if (passedTimeFromCreating < 1) {
+    printf("You can cancel the order, it's turned less than 1 hour\nCANCEL HERE\n");
+    deleteOrder(db, orderId);
+  } else {
+    printf("SOME ERROR");
+  }
+
+  return;
+}
+
+void checkOrderStatus(sqlite3 *db, int orderId){
   char *arrayAnswers[2] = {"yes", "no"};
   int answer;
+
   printf("%s\n", "CHECK ORDER");
-  //enum orderStatus test = processed;
-  //printf("%d\n", test);
+
   char *currOrderStatus = checkOrder(db, orderId);
+
   if (strcmp(currOrderStatus, "processed") == 0) {
     printf("Your order is not ready yet, please come later\n");
+
     return;
   } else if (strcmp(currOrderStatus, "ready") == 0) {
     printf("Your order is ready now, do you want to get it?\n");
+
     answer = askVariant(arrayAnswers, 2);
 
     if (answer == 1) {
@@ -120,19 +147,7 @@ void checkOrderStatus(sqlite3 *db, int orderId){
     } else {
       printf("ERROR answer!\n");
     }
+
     return;
   }
-
-}
-
-
-void getOrderById(sqlite3 *db, int orderId){
-  printf("%s\n", "GET ORDER");
-  getOrder(db, orderId);
-}
-
-void cancelOrder(sqlite3 *db, int orderId){
-  printf("%s\n", "DELETE ORDER");
-  char *currOrderStatus;
-  checkOrderStatus(db, orderId);
 }

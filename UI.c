@@ -1,7 +1,11 @@
+#ifndef UI_C
+#define UI_C
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
+#include <ctype.h>
 
 void clear(){
     #if defined(__linux__) || defined(__unix__) || defined(__APPLE__)
@@ -51,3 +55,21 @@ void askAnyKey() {
   printf("ok...\n");
   return;
 }
+
+char *formatNumber(char *mobileNumber) {
+  int num_len = strlen(mobileNumber);
+  char *non_spaced = malloc(num_len + 1);
+  int j = 0;
+
+  for (int i = 0; i < num_len; i++) {
+      if (mobileNumber[i] != ' ') {
+          non_spaced[j] = mobileNumber[i];
+          j++;
+      }
+  }
+
+  non_spaced[j] = '\0';
+
+  return non_spaced;
+}
+#endif
