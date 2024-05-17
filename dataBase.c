@@ -85,21 +85,21 @@ void addNewOrder(sqlite3 *db, enum orderStatus status, char *typeClothes, char *
 
 
     // Обновляем статус портного
-    sqlite3_stmt *updateTailor;
-    char *updateTailorSQL = "UPDATE tailors SET status='busy' WHERE id = ?";
-    rc = sqlite3_prepare_v2(db, updateTailorSQL, -1, &updateTailor, 0);
+    //sqlite3_stmt *updateTailor;
+    //char *updateTailorSQL = "UPDATE tailors SET status='busy' WHERE id = ?";
+    //rc = sqlite3_prepare_v2(db, updateTailorSQL, -1, &updateTailor, 0);
 
-    if (rc == SQLITE_OK) {
-        sqlite3_bind_int(updateTailor, 1, idTailor);
+    //if (rc == SQLITE_OK) {
+        //sqlite3_bind_int(updateTailor, 1, idTailor);
 
-        if (sqlite3_step(updateTailor) == SQLITE_DONE) {
-            printf("tailor's going to work on your order - BUSY\n");
-        } 
-    } else {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
-    }
+        //if (sqlite3_step(updateTailor) == SQLITE_DONE) {
+            //printf("tailor's going to work on your order - BUSY\n");
+        //} 
+    //} else {
+        //fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    //}
 
-    sqlite3_finalize(updateTailor);
+    //sqlite3_finalize(updateTailor);
 
     printf("\norder created successfully!\n");
 
@@ -190,7 +190,9 @@ char *checkOrder(sqlite3 *db, int orderId){
         status = strdup(stat);
 
         printf("Status of your order:\n%s\n", status);
-    } 
+    } else {
+	  	printf("There is no such order in system\n");
+	}
 
     sqlite3_finalize(res);
 
@@ -200,26 +202,21 @@ char *checkOrder(sqlite3 *db, int orderId){
 int checkClientId(sqlite3 *db, char *mobileNumber){
     sqlite3_stmt *res;
     
-    char *sql = "SELECT id FROM clients WHERE firstName = ? AND lastName = ?";
+    char *sql = "SELECT id FROM clients WHERE mobileNumber = ?";
      
     int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
 
-    printf("rc: %d\n", rc);
-
     if (rc == SQLITE_OK) {
-      //sqlite3_bind_text(res, 1, firstName, -1, SQLITE_STATIC);
-      //sqlite3_bind_text(res, 2, lastName, -1, SQLITE_STATIC);
+      sqlite3_bind_text(res, 1, mobileNumber, -1, SQLITE_STATIC);
     }
     
     int step = sqlite3_step(res);
     
-    printf("STEP: %d\n", step);
-
     int idClient = -1;
 
     if (step == SQLITE_ROW) {
         idClient = sqlite3_column_int(res, 0);
-        printf("Your id:%d\n", idClient);
+        printf("We found you in atelier system, your id is: %d\n", idClient);
     } else {
       printf("There is no such customer in system\n");
     }
@@ -272,18 +269,25 @@ void deleteOrder(sqlite3 *db, int orderId){
     sqlite3_finalize(res);
 }
 
-void addNewClient(sqlite3 *db, char *firstLastName, char *clientContacts){
+void addNewClient(sqlite3 *db, char *firstName, char *lastName, char *clientContacts, char *mobileNumber){
   sqlite3_stmt *res;  // компилируемое выражение
 
-  char *sql = "INSERT INTO clients (firstLastName, clientContacts) VALUES (?, ?)";
+  char *sql = "INSERT INTO clients (firstName, lastName, clientContacts, mobileNumber) VALUES (?, ?, ?, ?) returning id";
   int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
      
   if (rc == SQLITE_OK) 
   {
-        sqlite3_bind_text(res, 1, firstLastName, -1, SQLITE_STATIC);
-        sqlite3_bind_text(res, 2, clientContacts, -1, SQLITE_STATIC);
+        sqlite3_bind_text(res, 1, firstName, -1, SQLITE_STATIC);
+        sqlite3_bind_text(res, 2, lastName, -1, SQLITE_STATIC);
+        sqlite3_bind_text(res, 3, clientContacts, -1, SQLITE_STATIC);
+        sqlite3_bind_text(res, 4, mobileNumber, -1, SQLITE_STATIC);
 
         int step = sqlite3_step(res);
+        
+        if (step == SQLITE_ROW) {
+          int currId = sqlite3_column_int(res, 0);
+          printf("IN DB YOUR ID: %d\n", currId);
+        }
 
         if (step == SQLITE_DONE) 
         {
@@ -297,4 +301,64 @@ void addNewClient(sqlite3 *db, char *firstLastName, char *clientContacts){
     }
     sqlite3_finalize(res);
 
+}
+
+void transferOrder(sqlite3 *db, int orderId) {
+  	sqlite3_stmt *updateStatus;
+    char *updateStatusSQL = "UPDATE orders SET status='inProcess' WHERE id = ?";
+    int rc = sqlite3_prepare_v2(db, updateStatusSQL, -1, &updateStatus, 0);
+
+    if (rc == SQLITE_OK) {
+        sqlite3_bind_int(updateStatus, 1, orderId);
+
+        if (sqlite3_step(updateStatus) == SQLITE_DONE) {
+            printf("tailor's working on your order RIGHT NOW\n");
+        } 
+    } else {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(updateStatus);
+}
+
+void updateOrderComplete(sqlite3 *db, int orderId){
+  
+  // получить id портного из заказа
+  sqlite3_stmt *res;
+  char *sql = "SELECT idTailor FROM orders WHERE id = ?";
+  
+  int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+
+  if (rc == SQLITE_OK) {
+    sqlite3_bind_int(res, 1, orderId);
+  }
+    
+  int step = sqlite3_step(res);
+  
+  int idTailor = -1;
+    
+  if (step == SQLITE_ROW) {
+      idTailor = sqlite3_column_int(res, 0);
+      printf("We found id of your tailor: %d\n", idTailor);
+  } else {
+    printf("There is no such order\n");
+  }
+
+  sqlite3_finalize(res);
+	
+	sqlite3_stmt *updateStatus;
+    char *updateStatusSQL = "UPDATE orders SET status='completed', idTailor=NULL WHERE id = ?";
+    rc = sqlite3_prepare_v2(db, updateStatusSQL, -1, &updateStatus, 0);
+
+    if (rc == SQLITE_OK) {
+        sqlite3_bind_int(updateStatus, 1, orderId);
+
+        if (sqlite3_step(updateStatus) == SQLITE_DONE) {
+            printf("tailor has completed your order, it will be in storage\n");
+        } 
+    } else {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(updateStatus);
 }

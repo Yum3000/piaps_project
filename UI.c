@@ -57,19 +57,23 @@ void askAnyKey() {
 }
 
 char *formatNumber(char *mobileNumber) {
-  int num_len = strlen(mobileNumber);
-  char *non_spaced = malloc(num_len + 1);
-  int j = 0;
-
-  for (int i = 0; i < num_len; i++) {
-      if (mobileNumber[i] != ' ') {
-          non_spaced[j] = mobileNumber[i];
-          j++;
-      }
+	
+  char *currPointer = mobileNumber;
+  char *toSave = mobileNumber;
+  
+  char ch = *currPointer;
+  
+  while (ch != '\0') {
+	    ch = *currPointer;
+	    if (isdigit(ch)) {
+			*toSave = ch;
+			toSave++;
+		}
+		currPointer++;
   }
+  
+  *toSave = '\0';
 
-  non_spaced[j] = '\0';
-
-  return non_spaced;
+  return mobileNumber;
 }
 #endif

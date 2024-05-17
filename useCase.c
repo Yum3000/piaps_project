@@ -6,41 +6,41 @@
 #include "entities.h"
 #include "UI.c"
 
-void checkClient(sqlite3 *db, char *customerNumber){
+int checkClient(sqlite3 *db, char *customerNumber){
   printf("%s\n", "CHECK CLIENT");
   int answer;
   char *arrayAnswers[2] = {"yes", "no"};
   int currId = checkClientId(db, customerNumber);
-  printf("!!! %d\n", currId);
   if (currId == -1) {
     printf("%s\n", "Sorry, we didn't find you in atelier system");
     printf("Do you want to register now?\n");
     answer = askVariant(arrayAnswers, 2);
     if (answer == 2) {
-      return;
+      return 1;
     } else if (answer == 1) {
-      char *customerName = askString("Enter your first and last name\n");
-      char *customerContacts = askString("Enter your contacts");
-      addNewClient(db, customerName, customerContacts);
+      char *customerFirstName = askString("Enter your first name:\n");
+      char *customerLastName = askString("Enter your last name:\n");
+      char *customerContacts = askString("Enter your contacts:\n");
+      addNewClient(db, customerFirstName, customerLastName, customerContacts, customerNumber);
     }
-  } else {
-    printf("%s%d\n", "We found you in atelier system, your id is:", currId);
   }
-  return;
+  return 0;
 }
 
 void createNewOrder(sqlite3 *db)
 {
+  char number[30];
+  char temp;
+  
   printf("To make a new order enter your mobile number: \n");
-  char *customerNumber = malloc(50);
-
-  scanf("%49s %49s", customerNumber);	
-
-  char *newNum = formatNumber(customerNumber);
-
-  printf("YOUR NUMBER: %s\n", newNum);
-
-  //checkClient(db, customerNumber);
+	
+  scanf("%c",&temp); // temp statement to clear buffer
+  fgets(number,30,stdin);
+  
+  char *customerNumber = formatNumber(number);
+	
+  if (checkClient(db, customerNumber) == 1) return;
+  
   int numOfFreeTailor = getFreeTailor(db);
   
 
@@ -135,7 +135,7 @@ void checkOrderStatus(sqlite3 *db, int orderId){
     printf("Your order is not ready yet, please come later\n");
 
     return;
-  } else if (strcmp(currOrderStatus, "ready") == 0) {
+  } else if (strcmp(currOrderStatus, "completed") == 0) {
     printf("Your order is ready now, do you want to get it?\n");
 
     answer = askVariant(arrayAnswers, 2);
@@ -150,4 +150,27 @@ void checkOrderStatus(sqlite3 *db, int orderId){
 
     return;
   }
+}
+
+void passOrderToTailor(sqlite3 *db, int orderId){
+	char *currOrderStatus = checkOrder(db, orderId);
+  	if (strcmp(currOrderStatus, "created") == 0) {
+		if (checkTimeCreatedOrder(db, orderId) == 0) {
+			transferOrder(db, orderId);
+		}
+	} else {
+	  printf("You can't pass order to tailor!\n");	
+	}
+	return;
+}
+
+void completeOrder(sqlite3 *db, int orderId){
+	int passedTimeFromCreating = checkTimeCreatedOrder(db, orderId);
+	
+	if (passedTimeFromCreating > 24) {
+      updateOrderComplete(db, orderId);
+    } else {
+	  printf("It's impossible to change the status of order, it's still in progress\n");
+	  return;	
+	}
 }

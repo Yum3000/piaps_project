@@ -23,14 +23,14 @@ int main(){
       return 1;
   }
     
-  char *arrayMenu[4] = {"make a new order", "check order status", "cancel the order", "exit"};
+  char *arrayMenu[6] = {"make a new order", "check order status", "cancel the order", "pass order to tailor", "complete order", "exit"};
   printf("%s\n", "what do you need?");
 
   int answer;
   int orderId;
 
   while (1) {
-  answer = askVariant(arrayMenu, 4);
+  answer = askVariant(arrayMenu, 6);
     switch(answer){
       case 1: clear();
               createNewOrder(db);
@@ -49,7 +49,13 @@ int main(){
               askAnyKey();
               //return;
               break;
-      case 4: return 0;
+      case 4: printf("Enter the number of order to transfer: \n");
+              scanf("%d", &orderId);
+              passOrderToTailor(db, orderId);
+      case 5: printf("Enter the number of order to complete: \n");
+              scanf("%d", &orderId);
+              completeOrder(db, orderId);
+      case 6: return 0;
       default: printf("%s\n", "Error! Try again");
     }
   }
