@@ -35,45 +35,63 @@ int askNumber(char *string){
 }
 
 int askVariant(char **array, int countElements) {
-  int choice = 0;
   for (int i = 0; i < countElements; i++) {
     printf("%d. %s\n", i+1, array[i]);
   }
-  scanf("%d", &choice);
+
+  int choice = -1;
+  do {
+    printf("Enter a number from 1 to %d: ", countElements);
+    scanf("%d", &choice);
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+  } while(choice < 1 || choice > countElements);
 
   return choice;
 }
 
-void askAnyKey() {
-  char *anyKey = malloc(5);
-  printf("To return to main menu press any key...\n");
-  //gets(anyKey);
-  scanf("%5s", anyKey);
-  // очищать буфер??
-  //getchar(); // wait for ENTER
-  //getc(stdin);
-  printf("ok...\n");
+void formatToNumber(char *mobileNumber) {
+  char *position = mobileNumber;
+  char *digitPosition = mobileNumber;
+  char ch;
+
+   do {
+    ch = *position;
+
+    if (isdigit(ch)) {
+      *digitPosition = ch;
+      digitPosition++;
+		}
+
+		position++;
+  } while (ch != '\0');
+
+  *digitPosition = '\0';
+}
+
+char *askMobileNumber() {
+  char * number = malloc(30);
+
+  while(1) {
+    fgets(number, 30, stdin);
+    formatToNumber(number);
+
+    if (strlen(number) > 0) {
+      break;
+    } else {
+      printf("Number is incorrect. Try again:\n");
+    }
+  }
+
+  return number;
+}
+
+void askEnter() {
+  printf("To return to main menu press ENTER...\n");
+  int c;
+  while ((c = getchar()) != '\n' && c != EOF);
+  getchar();
   return;
 }
 
-char *formatNumber(char *mobileNumber) {
-	
-  char *currPointer = mobileNumber;
-  char *toSave = mobileNumber;
-  
-  char ch = *currPointer;
-  
-  while (ch != '\0') {
-	    ch = *currPointer;
-	    if (isdigit(ch)) {
-			*toSave = ch;
-			toSave++;
-		}
-		currPointer++;
-  }
-  
-  *toSave = '\0';
-
-  return mobileNumber;
-}
 #endif
