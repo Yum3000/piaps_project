@@ -21,16 +21,22 @@ int main(){
       sqlite3_close(db);
       return 1;
   }
+  
+  checkStorageUnits(db);
+  setTailorsFree(db);
+  
+  login(db);
+  sleep(4); // заменить
 
-  char *arrayMenu[5] = {"make a new order", "check order status", "cancel the order", "complete order", "exit"};
-  printf("%s\n", "what do you need?");
+  char *arrayMenu[4] = {"make a new order", "get the order", "cancel the order", "exit"};
 
   int answer;
   int orderId;
+  
 
   while (1) {
   clear();
-  answer = askVariant(arrayMenu, 5);
+  answer = askVariant(arrayMenu, 4);
     switch(answer){
       case 1: clear();
               createNewOrder(db);
@@ -46,10 +52,7 @@ int main(){
               cancelOrder(db, orderId);
               askEnter();
               break;
-      case 4: printf("Enter the number of order to complete: \n");
-              scanf("%d", &orderId);
-              completeOrder(db, orderId);
-      case 5: return 0;
+      case 4: return 0;
       default: printf("%s\n", "Error! Try again");
     }
   }

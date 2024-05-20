@@ -12,7 +12,7 @@ char *orderStatusName(enum orderStatus in) {
     return "completed";
     case orderStatus_unclaimed:
     return "unclaimed";
-    default: exit(2);
+    default: exit(1);
   }
 }
 #endif

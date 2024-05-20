@@ -6,8 +6,19 @@
 #include "entities.h"
 #include "UI.c"
 
+
+void login(sqlite3 *db) {
+	char *login = askString("Enter login:");
+    char *password = askString("Enter password:");
+    int idClerk = logInSystem(db, login, password);
+    if (idClerk == -1) {
+		exit(1);
+	}
+	return;
+  
+}
+
 int checkClient(sqlite3 *db, char *customerNumber) {
-  printf("%s\n", "CHECK CLIENT");
 
   int clientID = checkClientId(db, customerNumber);
 
@@ -55,44 +66,34 @@ void createNewOrder(sqlite3 *db) {
 
   char *customerNumber = askMobileNumber();
 
-	int idClient = checkClient(db, customerNumber);
-
+  int idClient = checkClient(db, customerNumber);
+  
   if (idClient < 0) return;
 
-  printf("%s\n", "creating a new order. please fill in next questions:");
+  printf("%s\n", "Creating a new order. Please fill in next questions:");
 
   printf("what is the type of order:\n");
   char *arrayTypeOrder[2] = {"sewing", "repair"};
   int idService = askVariant(arrayTypeOrder, 2);
 
-  char *clothes = askString("type what clothes it is:");
+  char *clothes = askString("What clothes it is:");
 
-  char *comment = askString("type some comments:");
+  char *comment = askString("Add some comments:");
 
-  int costOrder = askNumber("type the cost of the order:");
+  int costOrder = askNumber("The cost of the order:");
 
-  createOrder(db, clothes, comment, idService, idClient, idTailor, idStorageUnit);
-}
-
-void checkTime(sqlite3 *db, int orderId) {
-  printf("%s\n", "CHECK TIME");
-  getHoursSinceOrderCreation(db, orderId);
-}
-
-void getOrderById(sqlite3 *db, int orderId) {
-  printf("%s\n", "GET ORDER");
-  getOrder(db, orderId);
+  int currOrderId = createOrder(db, clothes, comment, costOrder, idService, idClient, idTailor, idStorageUnit, 0);
+  printf("Order created successfully! Your order id: %d\n", currOrderId);
 }
 
 void cancelOrder(sqlite3 *db, int orderId){
-  printf("%s\n", "CANCLE ORDER");
 
   int passedTimeFromCreating = getHoursSinceOrderCreation(db, orderId);
 
   if (passedTimeFromCreating > 1) {
     printf("You can't cancel the order, it's turned more than 1 hour\n");
   } else if (passedTimeFromCreating < 1) {
-    printf("You can cancel the order, it's turned less than 1 hour\nCANCEL HERE\n");
+    printf("You can cancel the order, it's turned less than 1 hour\n");
     deleteOrder(db, orderId);
   } else {
     printf("SOME ERROR");
@@ -102,7 +103,8 @@ void cancelOrder(sqlite3 *db, int orderId){
 }
 
 void checkOrderStatus(sqlite3 *db, int orderId) {
-  printf("%s\n", "CHECK ORDER");
+
+  char *yesNo[2] = {"yes", "no"};
 
   switch(getOrderStatus(db, orderId)) {
     case orderStatus_created:
@@ -114,15 +116,18 @@ void checkOrderStatus(sqlite3 *db, int orderId) {
       break;
 
     case orderStatus_completed:
-      char *yesNo[2] = {"yes", "no"};
+
       printf("Your order is ready now, do you want to get it?\n");
 
       switch (askVariant(yesNo, 2)) {
         case 1:
-         getOrderById(db, orderId);
+         getOrder(db, orderId);
+         sleep(2);
+         printf("Thank you for the order!\n");
+         deleteOrder(db, orderId);
          break;
         case 2:
-         printf("Ok, but you have only .. days to take it\n");
+         printf("Ok, see you later.\n");
          break;
         default:
          printf("ERROR answer!\n");
@@ -130,19 +135,32 @@ void checkOrderStatus(sqlite3 *db, int orderId) {
       break;
 
     case orderStatus_unclaimed:
-      printf("you're an awful client! you forgot about your order and now it is in a long term storage!\n");
-      printf("we will need from two to five days to retrieve it from there!\n");
+      printf("You're an awful client! You forgot about your order and now it is in a long term storage!\n");
+      printf("We will need from two to five days to retrieve it from there!\n");
+      printf("Do you want to leave request?\n");
+      
+      switch (askVariant(yesNo, 2)) {
+        case 1:
+         leaveRequestUnclaimedOrder(db, orderId);
+         break;
+        case 2:
+         break;
+        default:
+         printf("ERROR answer!\n");
+      }
       break;
+      
   }
 }
 
-void completeOrder(sqlite3 *db, int orderId) {
-	int passedTimeFromCreating = getHoursSinceOrderCreation(db, orderId);
-	
-	if (passedTimeFromCreating > 24) {
-      updateOrderComplete(db, orderId);
-    } else {
-	  printf("It's impossible to change the status of order, it's still in progress\n");
-	  return;	
-	}
+void checkStorageUnits(sqlite3 *db){
+  updateOrdersStorageUnit(db);
+}
+
+void leaveRequestUnclaimedOrder(sqlite3 *db, int orderId) {
+  	setUnclaimedRequested(db, orderId);
+}
+
+void setTailorsFree(sqlite3 *db){
+  freeTheTailors(db);
 }

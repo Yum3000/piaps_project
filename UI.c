@@ -87,7 +87,7 @@ char *askMobileNumber() {
 }
 
 void askEnter() {
-  printf("To return to main menu press ENTER...\n");
+  printf("To return to main menu press Enter...\n");
   int c;
   while ((c = getchar()) != '\n' && c != EOF);
   getchar();

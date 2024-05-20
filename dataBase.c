@@ -55,48 +55,40 @@ void addNewClerk(sqlite3 *db, int id, char *firstName, char *lastName){
 
 }
 
-void createOrder(sqlite3 *db, char *typeClothes, char *comments, int idService, int idClient, int idTailor, int idStorageUnit){
+int createOrder(sqlite3 *db, char *typeClothes, char *comments, int cost, int idService, int idClient, int idTailor, int idStorageUnit, int unclaimedRequested){
     sqlite3_stmt *orderStmt;
+    int currOrderId = -1;
 
-    char *orderStmtSQL = "INSERT INTO orders (typeClothes, comments, idService, idClient, idTailor, idStorageUnit) VALUES (?, ?, ?, ?, ?, ?)";
+    char *orderStmtSQL = "INSERT INTO orders (typeClothes, comments, cost, idService, idClient, idTailor, idStorageUnit, unclaimedRequested) VALUES (?, ?, ?, ?, ?, ?, ?, ?) returning id";
     int rc = sqlite3_prepare_v2(db, orderStmtSQL, -1, &orderStmt, 0);
      
     if (rc == SQLITE_OK) {
         sqlite3_bind_text(orderStmt, 1, typeClothes, -1, SQLITE_STATIC);
         sqlite3_bind_text(orderStmt, 2, comments, -1, SQLITE_STATIC);
-        sqlite3_bind_int(orderStmt, 3, idService);
-        sqlite3_bind_int(orderStmt, 4, idClient);
-        sqlite3_bind_int(orderStmt, 5, idTailor);
-        sqlite3_bind_int(orderStmt, 6, idStorageUnit);
+        sqlite3_bind_int(orderStmt, 3, cost);
+        sqlite3_bind_int(orderStmt, 4, idService);
+        sqlite3_bind_int(orderStmt, 5, idClient);
+        sqlite3_bind_int(orderStmt, 6, idTailor);
+        sqlite3_bind_int(orderStmt, 7, idStorageUnit);
+        sqlite3_bind_int(orderStmt, 8, unclaimedRequested);
 
-        if (sqlite3_step(orderStmt) == SQLITE_DONE) {
-            printf("new order inserted\n");
-        }
+        
+      int step = sqlite3_step(orderStmt);
+
+      if (step == SQLITE_ROW) {
+        currOrderId = sqlite3_column_int(orderStmt, 0);
+      }
+
+      //if (step != SQLITE_DONE) {
+      //    return -1;
+      //}
     } else {
         fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     }
 
     sqlite3_finalize(orderStmt);
 
-
-    // Обновляем статус портного
-    //sqlite3_stmt *updateTailor;
-    //char *updateTailorSQL = "UPDATE tailors SET status='busy' WHERE id = ?";
-    //rc = sqlite3_prepare_v2(db, updateTailorSQL, -1, &updateTailor, 0);
-
-    //if (rc == SQLITE_OK) {
-        //sqlite3_bind_int(updateTailor, 1, idTailor);
-
-        //if (sqlite3_step(updateTailor) == SQLITE_DONE) {
-            //printf("tailor's going to work on your order - BUSY\n");
-        //} 
-    //} else {
-        //fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
-    //}
-
-    //sqlite3_finalize(updateTailor);
-
-    printf("order created successfully!\n");
+    return currOrderId;
 }
 
 int getFreeTailorID(sqlite3 *db) {
@@ -151,14 +143,11 @@ void getOrder(sqlite3 *db, int orderId){
 
     if (step == SQLITE_ROW) {
         int orderId = sqlite3_column_int(res, 0);
-        char *status = (char *)sqlite3_column_text(res, 1);
-        char *orderDate = (char *)sqlite3_column_text(res, 2);
-        char *typeClothes = (char *)sqlite3_column_text(res, 3);
-        char *comments = (char *)sqlite3_column_text(res, 4);
-        int idService = sqlite3_column_int(res, 5);
-        int idClient = sqlite3_column_int(res, 6);
-        int idTailor = sqlite3_column_int(res, 7);
-        printf("Information about your order:\n%d,%s,%s,%s,%s,%d,%d,%d\n", orderId, status, orderDate, typeClothes, comments, idService, idClient, idTailor);
+        char *created = (char *)sqlite3_column_text(res, 1);
+        char *typeClothes = (char *)sqlite3_column_text(res, 2);
+        char *comments = (char *)sqlite3_column_text(res, 3);
+        int cost = sqlite3_column_int(res, 4);
+        printf("\nInformation about your order:\nid: %d, created: %s, type of clothes: %s, comments: %s, cost: %d\n", orderId, created, typeClothes, comments, cost);
        
     } 
 
@@ -207,7 +196,7 @@ int getHoursSinceOrderCreation(sqlite3 *db, int orderId) {
 
     if (step == SQLITE_ROW) {
         timeDifference = sqlite3_column_int(res, 0);
-        printf("Difference between NOW and your order's created time: %d\n", timeDifference);
+        //printf("Difference between NOW and your order's created time: %d\n", timeDifference);
     } else {
       printf("There is no such order in system\n");
     }
@@ -244,7 +233,7 @@ void deleteOrder(sqlite3 *db, int orderId){
       sqlite3_bind_int(res, 1, orderId);
 
       if (sqlite3_step(res) == SQLITE_DONE) {
-          printf("order is canceled!\n");
+          //printf("order is canceled!\n");
       } 
   } else {
       fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
@@ -268,12 +257,14 @@ int createClient(sqlite3 *db, char *firstName, char *lastName, char *clientConta
       int step = sqlite3_step(res);
 
       if (step == SQLITE_ROW) {
+		  //printf("write id client!!\n");
         clientID = sqlite3_column_int(res, 0);
       }
 
-      if (step != SQLITE_DONE) {
-          return -1;
-      }
+      //if (step != SQLITE_DONE) {
+		//  printf("not done !!!!\n");
+          //return -1;
+      //}
     } else {
       fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     }
@@ -283,62 +274,84 @@ int createClient(sqlite3 *db, char *firstName, char *lastName, char *clientConta
     return clientID;
 }
 
-void transferOrder(sqlite3 *db, int orderId) {
-  	sqlite3_stmt *updateStatus;
-    char *updateStatusSQL = "UPDATE orders SET status='inProcess' WHERE id = ?";
-    int rc = sqlite3_prepare_v2(db, updateStatusSQL, -1, &updateStatus, 0);
+int logInSystem(sqlite3 *db, char *login, char *password) {
+	
+	sqlite3_stmt *res;
+    char *sql = "SELECT id FROM clerks WHERE login = ? AND password = ?";
+     
+    int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
 
     if (rc == SQLITE_OK) {
-        sqlite3_bind_int(updateStatus, 1, orderId);
+      sqlite3_bind_text(res, 1, login, -1, SQLITE_STATIC);
+      sqlite3_bind_text(res, 2, password, -1, SQLITE_STATIC);
+    }
+    
+    int step = sqlite3_step(res);
+    
+    int idClerk = -1;
 
-        if (sqlite3_step(updateStatus) == SQLITE_DONE) {
-            printf("tailor's working on your order RIGHT NOW\n");
-        } 
+    if (step == SQLITE_ROW) {
+        idClerk = sqlite3_column_int(res, 0);
+        printf("We found you in atelier system, your id is: %d\n", idClerk);
     } else {
-        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+      printf("There is no such clerk in system\n");
     }
 
-    sqlite3_finalize(updateStatus);
+    sqlite3_finalize(res);
+    return idClerk;
 }
 
-void updateOrderComplete(sqlite3 *db, int orderId){
-  
-  // получить id портного из заказа
-  sqlite3_stmt *res;
-  char *sql = "SELECT idTailor FROM orders WHERE id = ?";
-  
-  int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
-
-  if (rc == SQLITE_OK) {
-    sqlite3_bind_int(res, 1, orderId);
-  }
-    
-  int step = sqlite3_step(res);
-  
-  int idTailor = -1;
-    
-  if (step == SQLITE_ROW) {
-      idTailor = sqlite3_column_int(res, 0);
-      printf("We found id of your tailor: %d\n", idTailor);
-  } else {
-    printf("There is no such order\n");
-  }
-
-  sqlite3_finalize(res);
+void updateOrdersStorageUnit(sqlite3 *db) {
+	sqlite3_stmt *res;
+	char *sql = "UPDATE orders SET idStorageUnit = NULL WHERE ROUND(JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(created)) > 183";
+	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
 	
-	sqlite3_stmt *updateStatus;
-    char *updateStatusSQL = "UPDATE orders SET status='completed', idTailor=NULL WHERE id = ?";
-    rc = sqlite3_prepare_v2(db, updateStatusSQL, -1, &updateStatus, 0);
+	if (rc == SQLITE_OK) {
+		
+      if (sqlite3_step(res) == SQLITE_DONE) {
+        //printf("free storage unit!!\n");
+      } 
+      
+    } else {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(res);
+	
+}
+
+void setUnclaimedRequested(sqlite3 *db, int orderId) {
+    sqlite3_stmt *res;
+	char *sql = "UPDATE orders SET unclaimedRequested = 1 WHERE id = ?";
+    int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
 
     if (rc == SQLITE_OK) {
-        sqlite3_bind_int(updateStatus, 1, orderId);
+        sqlite3_bind_int(res, 1, orderId);
 
-        if (sqlite3_step(updateStatus) == SQLITE_DONE) {
-            printf("tailor has completed your order, it will be in storage\n");
+        if (sqlite3_step(res) == SQLITE_DONE) {
+            printf("We will contact you later.\n");
         } 
     } else {
         fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
     }
 
-    sqlite3_finalize(updateStatus);
+    sqlite3_finalize(res);
+}
+
+void freeTheTailors(sqlite3 *db) {
+  	sqlite3_stmt *res;
+	char *sql = "UPDATE orders SET idTailor = NULL WHERE (JULIANDAY(CURRENT_TIMESTAMP) - JULIANDAY(created)) > 1";
+	int rc = sqlite3_prepare_v2(db, sql, -1, &res, 0);
+	
+	if (rc == SQLITE_OK) {
+		
+      if (sqlite3_step(res) == SQLITE_DONE) {
+        //printf("free tailors!!\n");
+      } 
+      
+    } else {
+        fprintf(stderr, "Error: %s\n", sqlite3_errmsg(db));
+    }
+
+    sqlite3_finalize(res);
 }
