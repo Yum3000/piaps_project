@@ -14,6 +14,8 @@ void login(sqlite3 *db) {
     if (idClerk == -1) {
 		exit(1);
 	}
+	free(login);
+	free(password);
 	return;
   
 }
@@ -35,9 +37,17 @@ int checkClient(sqlite3 *db, char *customerNumber) {
 
     char *customerFirstName = askString("Enter your first name:\n");
     char *customerLastName = askString("Enter your last name:\n");
-    char *customerContacts = askString("Enter your contacts:\n");
+    
+    printf("Enter your contacts\n");
+    
+    char customerContacts[100];
+
+    scanf(" %[^\n]s", customerContacts);
 
     clientID = createClient(db, customerFirstName, customerLastName, customerContacts, customerNumber);
+
+    free(customerFirstName);
+    free(customerLastName);
 
     if (clientID > 0) {
       printf("New client was registered\n");
@@ -68,7 +78,10 @@ void createNewOrder(sqlite3 *db) {
 
   int idClient = checkClient(db, customerNumber);
   
-  if (idClient < 0) return;
+  if (idClient < 0) {
+	  free(customerNumber);
+	  return;
+  }
 
   printf("%s\n", "Creating a new order. Please fill in next questions:");
 
@@ -84,19 +97,37 @@ void createNewOrder(sqlite3 *db) {
 
   int currOrderId = createOrder(db, clothes, comment, costOrder, idService, idClient, idTailor, idStorageUnit, 0);
   printf("Order created successfully! Your order id: %d\n", currOrderId);
+  free(customerNumber);
+  free(clothes);
+  free(comment);
 }
 
 void cancelOrder(sqlite3 *db, int orderId){
 
   int passedTimeFromCreating = getHoursSinceOrderCreation(db, orderId);
+  
+  char *yesNo[2] = {"yes", "no"};
 
   if (passedTimeFromCreating > 1) {
     printf("You can't cancel the order, it's turned more than 1 hour\n");
   } else if (passedTimeFromCreating < 1) {
     printf("You can cancel the order, it's turned less than 1 hour\n");
-    deleteOrder(db, orderId);
+    printf("Do you really want to cancel the order?\n");
+    
+    switch (askVariant(yesNo, 2)) {
+      case 1:
+       deleteOrder(db, orderId);
+       sleep(2);
+       printf("The order was canceled.\n");
+       break;
+      case 2:
+       break;
+      default:
+       printf("ERROR answer!\n");
+    }
+
   } else {
-    printf("SOME ERROR");
+    printf("Some error");
   }
 
   return;
@@ -148,6 +179,10 @@ void checkOrderStatus(sqlite3 *db, int orderId) {
         default:
          printf("ERROR answer!\n");
       }
+      break;
+      
+    case orderStatus_doesNotExist:
+      printf("There is no such order in system\n");
       break;
       
   }

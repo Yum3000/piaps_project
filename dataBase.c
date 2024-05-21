@@ -198,7 +198,7 @@ int getHoursSinceOrderCreation(sqlite3 *db, int orderId) {
         timeDifference = sqlite3_column_int(res, 0);
         //printf("Difference between NOW and your order's created time: %d\n", timeDifference);
     } else {
-      printf("There is no such order in system\n");
+      //printf("There is no such order in system\n");
     }
 
     sqlite3_finalize(res);
@@ -219,7 +219,9 @@ enum orderStatus getOrderStatus(sqlite3 *db, int orderId) {
         return orderStatus_completed;
     } else if (hoursSinceCreation > hoursInProgress) {
         return orderStatus_inProcess;
-    }
+    } else if (hoursSinceCreation == -1) {
+	  return orderStatus_doesNotExist;	
+	}
 
     return orderStatus_created;
 }

@@ -26,7 +26,7 @@ int main(){
   setTailorsFree(db);
   
   login(db);
-  sleep(4); // заменить
+  sleep(3); // заменить
 
   char *arrayMenu[4] = {"make a new order", "get the order", "cancel the order", "exit"};
 
@@ -52,14 +52,14 @@ int main(){
               cancelOrder(db, orderId);
               askEnter();
               break;
-      case 4: return 0;
+      case 4: printf("Goodbye!");
+              sqlite3_close(db);
+              return 0;
       default: printf("%s\n", "Error! Try again");
     }
   }
 
-  printf("Don't forget to close the db!\n");
 
-  sqlite3_close(db);
 
   return 0;
 }
